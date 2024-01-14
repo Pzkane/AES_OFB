@@ -1,7 +1,6 @@
 from AES.aes import encrypt as aes_encrypt
 import sys
 import pathlib
-import mimetypes
 
 def encrypt_OFB_mode(plain_text, key, iv):
     pos = 0
