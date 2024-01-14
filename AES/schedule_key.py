@@ -20,7 +20,7 @@ def get_array_grid(s):
     for i in range(len(s)//16):
         # Offset
         b = s[i*16: i*16 + 16]
-        print(b)
+        # print(b)
         grid = [[], [], [], []]
         for i in range(4):
             for j in range(4):
@@ -39,16 +39,16 @@ def schedule_key(key, rounds):
     # Generate all other polynomials
     # https://en.wikipedia.org/wiki/AES_key_schedule : Round constants
     for _ in range(1, rounds):
-        print("RCONp:", rcon)
+        # print("RCONp:", rcon)
         rcon.append([rcon[-1][0]*2, 0, 0, 0])
-        print("RCONi:", rcon)
+        # print("RCONi:", rcon)
 
         if rcon[-1][0] > 0x80:
             rcon[-1][0] ^= 0x11b
-    print("RCON:", rcon)
+    # print("RCON:", rcon)
 
     key_grid = get_array_grid(key)[0]
-    print("KEY_GRIDbefore:", key_grid)
+    # print("KEY_GRIDbefore:", key_grid)
 
     # FIPS-197 key expansion
     for round in range(rounds):
@@ -69,7 +69,7 @@ def schedule_key(key, rounds):
                                       ^ key_grid[i][round*4+j+3]])
         # print("3 columns done:", key_grid)
                 
-    print("KEY_GRIDafter:", key_grid)
+    # print("KEY_GRIDafter:", key_grid)
     return key_grid
 
 def get_round_key(expanded_key, round):

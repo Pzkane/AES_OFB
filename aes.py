@@ -1,6 +1,7 @@
 from AES.aes import encrypt as aes_encrypt
 import sys
 import pathlib
+import mimetypes
 
 def encrypt_OFB_mode(plain_text, key, iv):
     pos = 0
@@ -40,21 +41,30 @@ def encrypt_OFB_mode(plain_text, key, iv):
 #   python -m aes D ./some_file 0123456789abcdef
 
 STATIC_EXT_LEN = 2
+STATIC_IS_BIN = 1
+
+def is_binary(file_name):
+    try:
+        with open(file_name, 'tr') as check_file:  # try open file in text mode
+            check_file.read()
+            return False
+    except:  # if fail then file is non-text (binary)
+        return True
+
 
 def encrypt_decrypt(mode: str, filename: str, key: bytes, globalIV: bytes):
     # Structure:
-    # IV + extension_length + extension + encrypted_data
+    # IV + binary_file_flag + extension_length + extension + encrypted_data
     # Note: 'extension_length' and 'extension' are in plain_text
     if mode == 'E':
         file_extension = pathlib.Path(filename).suffix
-        print("File Extension: ", file_extension)
+        print("File Extension:", file_extension)
+        print("Is file binary?", is_binary(filename))
 
-        # Extension length + extension itself (without dot)
-        combined_result = globalIV + len(file_extension[1:]).to_bytes(STATIC_EXT_LEN, 'little') + str.encode(file_extension[1:])
+        combined_result = globalIV + ((1).to_bytes(STATIC_IS_BIN, 'little') if is_binary(filename) else (0).to_bytes(STATIC_IS_BIN, 'little')) + len(file_extension[1:]).to_bytes(STATIC_EXT_LEN, 'little') + str.encode(file_extension[1:])
         print(combined_result)
         r_handle = open(filename, 'rb')
         new_filename = filename + '-encrypted'
-        print(new_filename)
         # Write metadata
         w_handle = open(new_filename, 'wb')
         w_handle.write(combined_result)
@@ -67,16 +77,16 @@ def encrypt_decrypt(mode: str, filename: str, key: bytes, globalIV: bytes):
             if not piece:
                 break
             iv, result = encrypt_OFB_mode(piece, key, globalIV)
-            print(iv, result)
-            print("bstring:",b''.join(result))
+            # print(iv, result)
+            # print("bstring:",b''.join(result))
             w_handle.write(b''.join(result))
         r_handle.close()
         w_handle.close()
-        print(combined_result)
-        print("FILE ENCODED")
+        print("FILE ENCRYPTED")
     elif mode == 'D':
         r_handle = open(filename, 'rb')
         iv = r_handle.read(16)
+        binary_flag = int.from_bytes(r_handle.read(STATIC_IS_BIN), 'little')
         ext_len = int.from_bytes(r_handle.read(STATIC_EXT_LEN), 'little')
         print("Extension len (decoded):", ext_len)
         ext = (r_handle.read(ext_len)).decode()
@@ -88,19 +98,20 @@ def encrypt_decrypt(mode: str, filename: str, key: bytes, globalIV: bytes):
             if not piece:
                 break
             iv, result = encrypt_OFB_mode(piece, key, iv)
-            print(iv, result)
+            # print(iv, result)
             result = b''.join(result)
-            # For final chunk find the 0x80 byte position
-            try:
-                pos_0x80 = result.index(b'\x80')
-                # Strip it and trailing zeroes
-                result = result[:pos_0x80]
-            except ValueError:
-                pass
+            # For non-binary file's final chunk find the 0x80 byte position
+            if binary_flag == 0:
+                try:
+                    pos_0x80 = result.index(b'\x80')
+                    # Strip it and trailing zeroes
+                    result = result[:pos_0x80]
+                except ValueError:
+                    pass
             w_handle.write(result)
         r_handle.close()
         w_handle.close()
-        print("FILE DECODED")
+        print("FILE DECRYPTED")
 
 if __name__ == '__main__':
     encrypt_decrypt(sys.argv[1], sys.argv[2], str.encode(sys.argv[3]), str.encode(sys.argv[4]))
